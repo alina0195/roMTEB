@@ -42,7 +42,7 @@ results/
 results/*
 results_new/
 results_new/*
-
+not_relevant/*
 # Secrets
 .env
 .env.*
