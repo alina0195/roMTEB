@@ -37,4 +37,3 @@ See also [`docs/evaluation_protocol.md`](docs/evaluation_protocol.md).
 | BitextMining† | `NTREXBitextMining` / `Tatoeba` / `IWSLT2017BitextMining` | MTEB | reuse |
 | Clustering | `SIB200ClusteringS2S` | MTEB | reuse |
 
-Dropped: `Moroco.v2`; JuRo/WWTBM/RoMedQA PairClassification (archived scripts).
