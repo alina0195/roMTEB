@@ -1,0 +1,22 @@
+# Keep the evaluation image small. Dataset cache is mounted at runtime.
+.git
+.cursor
+*.sif
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.ruff_cache
+.mypy_cache
+results
+results_new
+logs
+cache
+tmp
+pylibs
+container_home
+legacy
+archive
+datasets
+tmp_graf_repo
+agent-transcripts

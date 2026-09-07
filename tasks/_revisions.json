@@ -1,0 +1,18 @@
+{
+  "alina0195/romteb-grile-reranking": "9e4f57fa2996dcc57ab5da0305143226ac33e943",
+  "alina0195/romteb-hatespeech-ro": "98ff69167b1ff7a2723762e5a28fb5967e694489",
+  "alina0195/romteb-histnero-mentions": "6770b7b50e10f828162bb6c85e48a49f02f543f3",
+  "alina0195/romteb-juro-legal-reranking": "fea41fd3067988542ca425c8ee74792f38424707",
+  "alina0195/romteb-mqa-ro-cqa-retrieval": "d10a8742b119e9344cc148588b68deb6bb9af388",
+  "alina0195/romteb-red-v2-emotion": "0e18a2e4fe13de33caeeafd0dd99fa2fde3db7c6",
+  "alina0195/romteb-ro-offense": "7ff082c5edca428d38617de6f015bc600abffc2d",
+  "alina0195/romteb-ro-sts": "d6927b1a0ca947d83a709cb069c1acaf0b2edced",
+  "alina0195/romteb-roabsa": "0832feb46c79f1fc629e6d261a5d957ab641f664",
+  "alina0195/romteb-rod-tal-retrieval": "4c9f932422743dfd00a031bbae4582b3546f2e87",
+  "alina0195/romteb-romath-domain": "b1858797e76764abca0264d17e9e4d3e3afb8181",
+  "alina0195/romteb-romedqa-v2-reranking": "762392c143f52c74c0aebd81a56deb739dc4ee9c",
+  "alina0195/romteb-ronli": "50a24a3de2548b0924c6400333a26e7009ef3d40",
+  "alina0195/romteb-saroco": "cebc980ecb007dcc00cf75687cdfd4c63b986433",
+  "alina0195/romteb-scitechbanro": "9505ec373ea6f057adeb93efe5ca4be0f43783e4",
+  "alina0195/romteb-wwtbm-ro": "e583cd3e4397faa32af77ceaeef74261f8783102"
+}

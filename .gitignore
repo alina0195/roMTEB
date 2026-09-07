@@ -1,0 +1,49 @@
+# Local / generated
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# Cluster runtime
+logs/
+logs/*
+cache/
+cache/*
+tmp/
+tmp/*
+pylibs/
+pylibs/*
+container_home/
+container_home/*
+*.sif
+
+# Lab-only / bulky (not published)
+docs/archived/
+docs/archived/*
+plan.md
+SETUP.md
+romteb.def
+steps.txt
+submit-romteb*
+tasks_added_and_solved.md
+datasets
+datasets/
+tmp_graf_repo
+tmp_graf_repo/
+archive/
+archive/*
+legacy/
+legacy/*
+results/
+results/*
+results_new/
+results_new/*
+
+# Secrets
+.env
+.env.*
+*.token

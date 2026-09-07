@@ -1,0 +1,17 @@
+model	MQARoCQARetrieval	RoDTALLawsRetrieval	WebFAQRetrieval	WikipediaRetrievalMultilingual	XQuADRetrieval
+BM25	0.334	0.431	0.683	0.847	0.961
+Alibaba-NLP__gte-multilingual-base	0.444	0.506	0.770	0.835	0.937
+BAAI__bge-multilingual-gemma2	0.491	0.379	0.596	0.687	0.888
+Qwen__Qwen3-Embedding-0.6B	0.431	0.490	0.789	0.881	0.927
+Qwen__Qwen3-Embedding-8B	0.554	0.604	0.864	0.915	0.973
+alina0195__bge-m3-ro-msmarco-v2	0.468	0.517	0.852	0.903	0.952
+google__embeddinggemma-300m	0.094	0.082	0.303	0.426	0.555
+ibm-granite__granite-embedding-311m-multilingual-r2	0.447	0.512	0.876	0.870	0.921
+intfloat__multilingual-e5-base	0.416	0.404	0.831	0.891	0.964
+intfloat__multilingual-e5-large	0.494	0.441	0.857	0.915	0.975
+intfloat__multilingual-e5-large-instruct	0.511	0.495	0.796	0.912	0.960
+intfloat__multilingual-e5-small	0.333	0.430	0.789	0.884	0.958
+nomic-ai__nomic-embed-text-v2-moe	0.473	0.500	0.844	0.889	0.954
+nvidia__llama-embed-nemotron-8b	0.379	0.150	0.196	0.434	0.499
+sentence-transformers__paraphrase-multilingual-MiniLM-L12-v2	0.230	0.332	0.612	0.718	0.839
+tencent__KaLM-Embedding-Gemma3-12B-2511	0.617			0.833	0.945
