@@ -101,8 +101,9 @@ from sentence_transformers import SentenceTransformer
 
 from romteb.benchmark import ROMTEB_TASKS
 from romteb.bm25_ro import BM25_MODEL_NAME, LEXICAL_BASELINE_NAMES, load_bm25_ro
-from romteb.eval_config import DEFAULT_SAMPLES_PER_LABEL, classification_shots
 from romteb.model_prompts import prefer_mteb_loader, prompts_for
+from sklearn.linear_model import LogisticRegression
+from romteb.eval_config import N_EXPERIMENTS, DEFAULT_SAMPLES_PER_LABEL, classification_shots, make_probe
 
 # mteb/transformers import can re-bind utils.is_flash_attn_2_available; patch again.
 if _flash_attn_disabled():
@@ -296,6 +297,9 @@ def _run_k8_sidecar(
         except Exception:
             k8_task = task
         k8_task.samples_per_label = DEFAULT_SAMPLES_PER_LABEL
+        k8_task.n_experiments = N_EXPERIMENTS                      # 10 draws, as in MTEB
+        k8_task.evaluator_model = LogisticRegression(max_iter=100)  # MTEB's default probe
+
         print(f"[romteb] dual-k: {name} samples_per_label={DEFAULT_SAMPLES_PER_LABEL}")
         _run_task(
             k8_task,
@@ -314,6 +318,8 @@ def _run_k8_sidecar(
         print(f"[romteb] k8 sidecar failed for {name}: {exc}", file=sys.stderr)
     finally:
         task.samples_per_label = original_k
+        task.n_experiments = 1
+        task.evaluator_model = make_probe() 
         if backup.exists():
             shutil.move(str(backup), str(original_path))
 

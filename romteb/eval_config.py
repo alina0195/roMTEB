@@ -16,6 +16,9 @@ Reporting domain / dataset
 from __future__ import annotations
 
 from typing import Any, Iterable
+from sklearn.linear_model import LogisticRegression
+
+FULL_TRAIN = 10**9  # larger than any class count, so every train row is kept
 
 # Models skipped from Borda / plots. Nemotron retrieval is still the
 # mis-prompted v1 run (prompt-rerun stopped after bge-multilingual-gemma2).
@@ -210,7 +213,8 @@ REPORT_MACRO_F1: frozenset[str] = frozenset({"RoABSAClassification"})
 
 
 def classification_shots(task_name: str) -> int:
-    return CLASSIFICATION_SHOTS.get(task_name, DEFAULT_SAMPLES_PER_LABEL)
+    # return CLASSIFICATION_SHOTS.get(task_name, DEFAULT_SAMPLES_PER_LABEL)
+    return FULL_TRAIN
 
 
 def reporting_domain(task_name: str) -> str | None:
@@ -226,15 +230,18 @@ def metric_of(task_type: str, task_name: str | None = None) -> str:
         return TASK_PRIMARY_METRIC[task_name]
     return CATEGORY_PRIMARY_METRIC.get(task_type, "main_score")
 
+def make_probe():
+    # A new instance for each task, so tasks never share one fitted model.
+    return LogisticRegression(max_iter=1000, class_weight="balanced")
 
 def apply_eval_config(tasks: Iterable[Any]) -> list[Any]:
-    """Set ``samples_per_label`` / ``n_experiments`` on loaded task objects."""
     out = []
     for task in tasks:
         name = getattr(getattr(task, "metadata", None), "name", None)
         if name and hasattr(task, "samples_per_label"):
             task.samples_per_label = classification_shots(name)
-        if name and hasattr(task, "n_experiments"):
-            task.n_experiments = N_EXPERIMENTS
+            task.n_experiments = 1               # with full data, all draws would be identical
+            task.evaluator_model = make_probe()
         out.append(task)
     return out
+
