@@ -1,19 +1,36 @@
 """Prepare and upload RoNLI for RoMTEB.
 
-Source: https://github.com/Eduard6421/RONLI (~64K Romanian NLI triples,
-3-class: entailment, neutral, contradiction).
+Source: https://github.com/Eduard6421/RONLI (Poesina et al., ACL 2024),
+pinned to commit ``RONLI_COMMIT``. Only these three files are read:
 
-Tries HF mirror first, falls back to downloading raw files from GitHub.
+    dataset/datasets/train.json        55,102 pairs, distant supervision
+    dataset/datasets/validation.json    3,059 pairs, manually annotated
+    dataset/datasets/test.json          3,000 pairs, manually annotated
 
-Output: alina0195/romteb-ronli with {sentence1, sentence2, label} columns,
-        label in {0=entailment, 1=neutral, 2=contradiction}.
+The repo also ships train_easy/train_hard/train_curriculum*/old_validation
+and a second validation.json; they must NOT be globbed into the splits.
 
-Test split is rebalanced by undersampling contradiction so that entailment
-prevalence is ~50% after the ``dataset_transform`` filter that drops neutral.
-The upstream RONLI test set is 92.8% contradiction / 7.2% entailment; that
-prevalence is below the max_ap floor of a random classifier and produced a
-0.10-0.14 spread across all 13 models in the roMTEB v1 legacy run.
-Train and validation splits are preserved verbatim.
+Upstream label ids, confirmed in two places of the RONLI repo:
+corpus/NLI_extractor.py (label assignment) and
+dataset/generate_datasets/check_outputs.py (word_to_class):
+
+    0 = Contrastive  (contradiction; markers such as "În contrast", "Contrar ...")
+    1 = Entailment
+    2 = Consequence  ("reasoning"; markers such as "prin urmare", "astfel")
+    3 = Unrelated    (random pairs of unrelated sentences; the "neutral" class)
+
+The previous version of this script assumed 0=entailment, 1=neutral,
+2=contradiction and silently dropped id 3, so the pair-classification task
+compared Contrastive (as "positive") against Consequence. See the task file.
+
+Output: alina0195/romteb-ronli, columns
+    sentence1, sentence2, label (upstream id 0-3), label_name, guid, source_split
+
+    train : upstream train.json verbatim (for training only; never evaluated)
+    test  : upstream validation.json + test.json, exact-duplicate pairs merged,
+            pairs whose label differs between the two files dropped.
+            No rebalancing. There is no validation split: it is part of test,
+            so nothing may be tuned or early-stopped on it.
 """
 
 from __future__ import annotations
@@ -21,209 +38,164 @@ from __future__ import annotations
 import argparse
 import io
 import json
-import random
 import urllib.request
 import zipfile
-from typing import Iterable
+from collections import Counter
+from pathlib import Path
 
-from romteb._hf_datasets import Dataset, DatasetDict
-
-from romteb.data_prep._common import print_stats, push_to_hub
-
-REBALANCE_SEED = 20260901
-REBALANCE_NEG_PER_POS = 1  # positives : negatives ratio in the rebuilt test split
-
+RONLI_COMMIT = "fd75ce0a8cf09af638a94efea2e0e016bbfcb112"
+GITHUB_ZIP_URL = f"https://github.com/Eduard6421/RONLI/archive/{RONLI_COMMIT}.zip"
+SPLIT_FILES = {
+    "train": "dataset/datasets/train.json",
+    "validation": "dataset/datasets/validation.json",
+    "test": "dataset/datasets/test.json",
+}
+EXPECTED_ROWS = {"train": 55_102, "validation": 3_059, "test": 3_000}
 
 TARGET_REPO = "alina0195/romteb-ronli"
 
-GITHUB_ZIP_URL = "https://github.com/Eduard6421/RONLI/archive/refs/heads/main.zip"
-
-HF_CANDIDATES = [
-    "Eduard6421/RONLI",
-    "readerbench/RONLI",
-    "ronli",
-]
-
-LABEL_MAP = {
-    "entailment": 0,
-    "neutral": 1,
-    "contradiction": 2,
-    "0": 0,
-    "1": 1,
-    "2": 2,
-    0: 0,
-    1: 1,
-    2: 2,
-}
-
-SENT1_KEYS = ("premise", "sentence1", "anchor", "text_a")
-SENT2_KEYS = ("hypothesis", "sentence2", "positive", "text_b")
-LABEL_KEYS = ("label", "labels", "gold_label", "relation")
+# Names exactly as upstream word_to_class (check_outputs.py).
+LABEL_NAMES = {0: "Contrastive", 1: "Entailment", 2: "Consequence", 3: "Unrelated"}
 
 
-def _try_hf():
-    from romteb._hf_datasets import load_dataset
+# --------------------------------------------------------------------------
+# Loading (pure Python, no HF dependency, so it can be unit-tested)
+# --------------------------------------------------------------------------
 
-    for src in HF_CANDIDATES:
-        try:
-            print(f"Trying HF: {src} ...")
-            return src, load_dataset(src)
-        except Exception as exc:
-            print(f"  {src}: {exc}")
-    return None, None
+def load_raw_splits(source_dir: str | None = None) -> dict[str, list[dict]]:
+    """Read the three split files from a local clone or the pinned GitHub zip."""
+    if source_dir:
+        root = Path(source_dir)
+        return {
+            split: json.loads((root / rel).read_text(encoding="utf-8"))
+            for split, rel in SPLIT_FILES.items()
+        }
 
-
-def _download_github(url: str) -> bytes:
-    print(f"Downloading {url} ...")
-    with urllib.request.urlopen(url, timeout=300) as resp:
-        return resp.read()
-
-
-def _parse_json_records(blob: bytes, name_hint: str) -> Iterable[dict]:
-    text = blob.decode("utf-8", errors="ignore")
-    if name_hint.endswith(".jsonl") or "\n{" in text[:500]:
-        for line in text.splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                yield json.loads(line)
-            except json.JSONDecodeError:
-                continue
-    else:
-        try:
-            data = json.loads(text)
-            if isinstance(data, list):
-                yield from data
-        except json.JSONDecodeError:
-            return
+    print(f"Downloading {GITHUB_ZIP_URL} ...")
+    with urllib.request.urlopen(GITHUB_ZIP_URL, timeout=300) as resp:
+        blob = resp.read()
+    out: dict[str, list[dict]] = {}
+    with zipfile.ZipFile(io.BytesIO(blob)) as z:
+        prefix = z.namelist()[0].split("/")[0]  # "RONLI-<sha>"
+        for split, rel in SPLIT_FILES.items():
+            with z.open(f"{prefix}/{rel}") as f:
+                out[split] = json.load(f)
+    return out
 
 
-def _from_github() -> dict[str, list[dict]]:
-    raw = _download_github(GITHUB_ZIP_URL)
-    splits: dict[str, list[dict]] = {"train": [], "validation": [], "test": []}
-    with zipfile.ZipFile(io.BytesIO(raw)) as z:
-        for name in z.namelist():
-            lower = name.lower()
-            if not (lower.endswith(".json") or lower.endswith(".jsonl")):
-                continue
-            if "train" in lower:
-                key = "train"
-            elif "val" in lower or "dev" in lower:
-                key = "validation"
-            elif "test" in lower:
-                key = "test"
-            else:
-                continue
-            with z.open(name) as f:
-                blob = f.read()
-            for rec in _parse_json_records(blob, lower):
-                splits[key].append(rec)
-            print(f"  {name}: now {len(splits[key])} {key} records")
-    return splits
-
-
-def _pick(cols: list[str], cands: tuple[str, ...]) -> str:
-    for c in cands:
-        if c in cols:
-            return c
-    raise KeyError(f"None of {cands} in {cols}")
-
-
-def _normalize_records(records: list[dict]) -> Dataset:
-    if not records:
-        return Dataset.from_list([])
-    cols = list(records[0].keys())
-    s1k, s2k, lk = _pick(cols, SENT1_KEYS), _pick(cols, SENT2_KEYS), _pick(cols, LABEL_KEYS)
-    out = []
+def normalize(records: list[dict], split: str) -> list[dict]:
+    """Keep upstream ids as they are; fail loudly on anything unexpected."""
+    rows = []
     for r in records:
-        s1, s2 = (r.get(s1k) or "").strip(), (r.get(s2k) or "").strip()
+        s1 = (r.get("sentence1") or "").strip()
+        s2 = (r.get("sentence2") or "").strip()
+        label = r.get("label")
+        if label not in LABEL_NAMES:
+            raise ValueError(f"[{split}] unexpected label {label!r} in guid={r.get('guid')}")
         if not s1 or not s2:
             continue
-        label = LABEL_MAP.get(r.get(lk))
-        if label is None and isinstance(r.get(lk), str):
-            label = LABEL_MAP.get(r[lk].lower())
-        if label is None:
-            continue
-        out.append({"sentence1": s1, "sentence2": s2, "label": int(label)})
-    return Dataset.from_list(out)
+        rows.append({
+            "sentence1": s1,
+            "sentence2": s2,
+            "label": int(label),
+            "label_name": LABEL_NAMES[label],
+            "guid": str(r.get("guid", "")),
+            "source_split": split,
+        })
+    return rows
 
 
-def _rebalance_test(test_ds: Dataset, neg_per_pos: int, seed: int) -> Dataset:
-    """Undersample contradiction (label=2) so PairClassification is not at prevalence.
+def merge_eval_splits(val_rows: list[dict], test_rows: list[dict]) -> tuple[list[dict], dict]:
+    """Union of validation and test, deduplicated on the (sentence1, sentence2) pair.
 
-    RONLI test has 74 entailment / 96 neutral / 952 contradiction. After the
-    PairClassification transform drops neutral, prevalence = 7.2%, so max_ap
-    collapses to prevalence for every model. Keep all entailment and neutral
-    rows; sub-sample contradiction to ``neg_per_pos * n_entailment`` with a
-    fixed seed so revisions are reproducible.
+    Same pair + same label in both files -> kept once (source_split="test+validation").
+    Same pair + different labels         -> dropped (annotation conflict).
     """
-    ent_idx = [i for i, y in enumerate(test_ds["label"]) if y == 0]
-    neu_idx = [i for i, y in enumerate(test_ds["label"]) if y == 1]
-    con_idx = [i for i, y in enumerate(test_ds["label"]) if y == 2]
-    target_con = min(len(con_idx), neg_per_pos * len(ent_idx))
-    rng = random.Random(seed)
-    con_sample = sorted(rng.sample(con_idx, target_con)) if target_con < len(con_idx) else con_idx
-    keep = sorted(set(ent_idx) | set(neu_idx) | set(con_sample))
-    balanced = test_ds.select(keep)
-    print(
-        f"[ronli] test rebalance: entailment={len(ent_idx)} "
-        f"contradiction={len(con_idx)}->{len(con_sample)} neutral={len(neu_idx)} "
-        f"(pairclassification prevalence after neutral filter: "
-        f"{len(ent_idx) / (len(ent_idx) + len(con_sample)):.3f})"
-    )
-    return balanced
+    groups: dict[tuple[str, str], list[dict]] = {}
+    for r in test_rows + val_rows:  # test first, so its guid wins on duplicates
+        groups.setdefault((r["sentence1"], r["sentence2"]), []).append(r)
 
+    merged, n_dup, n_conflict = [], 0, 0
+    for rows in groups.values():
+        labels = {r["label"] for r in rows}
+        if len(labels) > 1:
+            n_conflict += 1
+            continue
+        keep = dict(rows[0])
+        if len(rows) > 1:
+            n_dup += 1
+            keep["source_split"] = "+".join(sorted({r["source_split"] for r in rows}))
+        merged.append(keep)
+    return merged, {"duplicates_merged": n_dup, "conflicts_dropped": n_conflict}
+
+
+def leakage_report(train_rows: list[dict], eval_rows: list[dict]) -> dict:
+    train_pairs = {(r["sentence1"], r["sentence2"]) for r in train_rows}
+    train_sents = {r["sentence1"] for r in train_rows} | {r["sentence2"] for r in train_rows}
+    return {
+        "eval_pairs_also_in_train": sum((r["sentence1"], r["sentence2"]) in train_pairs for r in eval_rows),
+        "eval_pairs_sharing_a_sentence_with_train": sum(
+            r["sentence1"] in train_sents or r["sentence2"] in train_sents for r in eval_rows
+        ),
+    }
+
+
+def build(source_dir: str | None = None) -> tuple[dict[str, list[dict]], dict]:
+    raw = load_raw_splits(source_dir)
+    for split, n in EXPECTED_ROWS.items():
+        if len(raw[split]) != n:
+            print(f"[ronli] WARNING: {split} has {len(raw[split])} rows, expected {n}")
+
+    norm = {split: normalize(recs, split) for split, recs in raw.items()}
+    test, merge_stats = merge_eval_splits(norm["validation"], norm["test"])
+    if merge_stats["conflicts_dropped"] == 0 and merge_stats["duplicates_merged"] == 0:
+        print("[ronli] note: validation and test share no pairs")
+
+    stats = {
+        "label_counts": {
+            split: dict(Counter(r["label_name"] for r in rows))
+            for split, rows in {"train": norm["train"], "test": test}.items()
+        },
+        "binary_test_pairs(Entailment vs Contrastive)": dict(
+            Counter(r["label_name"] for r in test if r["label"] in (0, 1))
+        ),
+        **merge_stats,
+        **leakage_report(norm["train"], test),
+    }
+    return {"train": norm["train"], "test": test}, stats
+
+
+# --------------------------------------------------------------------------
+# CLI
+# --------------------------------------------------------------------------
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dry_run", action="store_true")
-    parser.add_argument(
-        "--no_rebalance",
-        action="store_true",
-        help="Push raw upstream test split without undersampling contradiction.",
-    )
+    parser.add_argument("--dry_run", action="store_true", help="Build and print stats, do not push.")
+    parser.add_argument("--source_dir", default=None, help="Local RONLI clone instead of the GitHub zip.")
     args = parser.parse_args()
 
-    src, hf = _try_hf()
-    if hf is not None:
-        print(f"Using HF source: {src}")
-        out = DatasetDict()
-        for split in hf:
-            recs = list(hf[split])
-            out[split] = _normalize_records(recs)
-    else:
-        print("HF source unavailable; falling back to GitHub.")
-        splits = _from_github()
-        out = DatasetDict({
-            k: _normalize_records(v) for k, v in splits.items() if v
-        })
-
-    if "test" not in out:
-        if "validation" in out:
-            out = DatasetDict(train=out.get("train", out["validation"]), test=out["validation"])
-        else:
-            base = next(iter(out.values()))
-            split = base.train_test_split(test_size=0.1, seed=42)
-            out = DatasetDict(train=split["train"], test=split["test"])
-
-    if not args.no_rebalance and "test" in out:
-        out["test"] = _rebalance_test(
-            out["test"],
-            neg_per_pos=REBALANCE_NEG_PER_POS,
-            seed=REBALANCE_SEED,
-        )
-
-    print_stats("RoNLI", out, text_keys=["sentence1", "sentence2"])
+    splits, stats = build(args.source_dir)
+    print(json.dumps(stats, indent=2, ensure_ascii=False))
 
     if args.dry_run:
         return
-    commit_msg = (
-        "Rebalance RoNLI test (undersample contradiction) for PairClassification"
-        if not args.no_rebalance
-        else "Refresh RoMTEB RoNLI (3-class NLI)"
+
+    # HF imports only when pushing (they go through the local-datasets-folder shim).
+    from romteb._hf_datasets import Dataset, DatasetDict
+    from romteb.data_prep._common import print_stats, push_to_hub
+
+    out = DatasetDict({k: Dataset.from_list(v) for k, v in splits.items()})
+    print_stats("RoNLI", out, text_keys=["sentence1", "sentence2"])
+    sha = push_to_hub(
+        out,
+        TARGET_REPO,
+        commit_message=(
+            f"RoNLI from RONLI@{RONLI_COMMIT[:7]}: correct upstream label ids "
+            "(0 Contrastive, 1 Entailment, 2 Consequence, 3 Unrelated); "
+            "test = validation+test deduplicated; no rebalancing"
+        ),
     )
-    sha = push_to_hub(out, TARGET_REPO, commit_message=commit_msg)
     print(f"\nPin: revision = {sha!r}")
 
 

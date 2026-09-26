@@ -87,7 +87,7 @@ TASK_REPORTING_DOMAIN: dict[str, str] = {
     # Open-domain web IR
     "WebFAQRetrieval": "Web",
     "MQARoCQARetrieval": "Web",
-    "RoNLIPairClassification": "News",
+    "RoNLIPairClassification": "Encyclopaedic",
     "RoSTS": "News",
 }
 
