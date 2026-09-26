@@ -8,10 +8,9 @@ from romteb.tasks.classification.ro_offense import RoOffenseClassification
 from romteb.tasks.classification.romath import RoMathDomainClassification
 from romteb.tasks.classification.saroco import SaRoCoClassification
 from romteb.tasks.classification.scitechbanro import SciTechBanROClassification
+from romteb.tasks.classification.ronli_cls import RoNLIClassification
 
-# Retired (not registered in benchmark.py):
-# FakenewsRoClassification, ROFFClassification,
-# RoOffenseSequencesClassification, FBRoOffenseClassification.
+
 
 __all__ = [
     "RoABSAClassification",
@@ -22,4 +21,5 @@ __all__ = [
     "SciTechBanROClassification",
     "SaRoCoClassification",
     "HistNERoMentionClassification",
+    "RoNLIClassification"
 ]

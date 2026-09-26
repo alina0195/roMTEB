@@ -17,6 +17,8 @@ from __future__ import annotations
 
 from typing import Any, Iterable
 
+from sklearn.linear_model import LogisticRegression
+
 # Models skipped from Borda / plots. Nemotron retrieval is still the
 # mis-prompted v1 run (prompt-rerun stopped after bge-multilingual-gemma2).
 LEADERBOARD_EXCLUDE: set[str] = {
@@ -24,8 +26,23 @@ LEADERBOARD_EXCLUDE: set[str] = {
 }
 
 # Keep the MTEB default unless a task is listed below.
-DEFAULT_SAMPLES_PER_LABEL = 8
-N_EXPERIMENTS = 10
+DEFAULT_SAMPLES_PER_LABEL = 8   # MTEB default; used by the k8 sidecar
+N_EXPERIMENTS = 10              # MTEB default; used by the k8 sidecar
+
+# Official RoMTEB protocol: full-train linear probe.
+# FULL_TRAIN is larger than any class count, so _undersample_data keeps every row.
+FULL_TRAIN = 10**9
+
+# Optional per-class caps for very large / expensive train splits.
+# Only classes above the cap are subsampled; smaller classes stay whole.
+FULL_TRAIN_CAPS: dict[str, int] = {
+    # "RoNLIClassification": 5000,   # uncomment if pair features get too heavy
+}
+
+
+def make_probe() -> LogisticRegression:
+    """Probe for the full-train protocol (a fresh instance per task)."""
+    return LogisticRegression(max_iter=1000, class_weight="balanced")
 
 # Rationale lives in docs/evaluation_protocol.md.
 CLASSIFICATION_SHOTS: dict[str, int] = {
@@ -87,7 +104,8 @@ TASK_REPORTING_DOMAIN: dict[str, str] = {
     # Open-domain web IR
     "WebFAQRetrieval": "Web",
     "MQARoCQARetrieval": "Web",
-    "RoNLIPairClassification": "News",
+    "RoNLIPairClassification": "Encyclopaedic",
+    "RoNLIClassification": "Encyclopaedic",
     "RoSTS": "News",
 }
 
@@ -149,6 +167,7 @@ TASK_DATASET: dict[str, str] = {
     "HistNERoMentionClassification": "HistNERo",
     "RoABSAClassification": "RoABSA",
     "RoNLIPairClassification": "RoNLI",
+    "RoNLIClassification": "RoNLI",  # same source: never double-count in domain means
     "RoSTS": "RoSTS",
     "WebFAQRetrieval": "WebFAQ",
     "WikipediaRetrievalMultilingual": "Wikipedia",
@@ -206,11 +225,16 @@ RERANKING_RANDOM_BASELINE: dict[str, dict[str, float]] = {
 }
 
 # Classification tasks that also print macro-F1 next to accuracy.
-REPORT_MACRO_F1: frozenset[str] = frozenset({"RoABSAClassification"})
+REPORT_MACRO_F1: frozenset[str] = frozenset({"RoABSAClassification", "RoNLIClassification"})
 
 
 def classification_shots(task_name: str) -> int:
-    return CLASSIFICATION_SHOTS.get(task_name, DEFAULT_SAMPLES_PER_LABEL)
+    """Train budget per label under the official (full-train) protocol.
+
+    CLASSIFICATION_SHOTS above is kept only as a record of the old k-shot
+    budgets (e.g. for a learning-curve appendix); it is not used here.
+    """
+    return FULL_TRAIN_CAPS.get(task_name, FULL_TRAIN)
 
 
 def reporting_domain(task_name: str) -> str | None:
@@ -228,13 +252,13 @@ def metric_of(task_type: str, task_name: str | None = None) -> str:
 
 
 def apply_eval_config(tasks: Iterable[Any]) -> list[Any]:
-    """Set ``samples_per_label`` / ``n_experiments`` on loaded task objects."""
+    """Apply the full-train probe protocol to every classification task."""
     out = []
     for task in tasks:
         name = getattr(getattr(task, "metadata", None), "name", None)
         if name and hasattr(task, "samples_per_label"):
             task.samples_per_label = classification_shots(name)
-        if name and hasattr(task, "n_experiments"):
-            task.n_experiments = N_EXPERIMENTS
+            task.n_experiments = 1             # full data: every draw would be identical
+            task.evaluator_model = make_probe()
         out.append(task)
     return out

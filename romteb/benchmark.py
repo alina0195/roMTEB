@@ -24,6 +24,7 @@ from romteb.tasks.classification import (
     SaRoCoClassification,
     SciTechBanROClassification,
 )
+from romteb.tasks.classification.ronli_cls import RoNLIClassification
 from romteb.tasks.pair_classification import RoNLIPairClassification
 from romteb.tasks.reranking import (
     GrileGrammarReranking,
@@ -58,6 +59,7 @@ _CUSTOM_CLASSES = [
     SciTechBanROClassification,
     SaRoCoClassification,
     HistNERoMentionClassification,
+    RoNLIClassification,
     # Pair Classification (cosine AP, no LR)
     RoNLIPairClassification,
     # STS
