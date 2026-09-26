@@ -8,7 +8,6 @@ See also [`docs/evaluation_protocol.md`](docs/evaluation_protocol.md).
 | Classification | `RoABSAClassification` | RoABSA aspect-level | custom |
 | Classification | `RoOffenseClassification` | news-ro-offense | custom |
 | Classification | `HateSpeechROClassification` | hate-speech-ro | custom |
-| Classification | `RoMathDomainClassification` | RoMath | custom |
 | Classification | `REDv2EmotionClassification` | REDv2 | custom |
 | Classification | `SciTechBanROClassification` | ClickbaitSciTechRO xlsx | custom |
 | Classification | `SaRoCoClassification` | SaRoCo | custom |

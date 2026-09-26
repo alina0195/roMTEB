@@ -22,7 +22,6 @@ vectors (few shots per class, 10 draws).
 | Classification | `RoOffenseClassification` | `readerbench/news-ro-offense` | CC-BY-4.0 |
 | Classification | `HateSpeechROClassification` | `readerbench/ro-hate-speech` | CC-BY-NC-4.0 |
 | Classification | `REDv2EmotionClassification` | REDv2 | CC-BY-4.0 |
-| Classification | `RoMathDomainClassification` | `cosmadrian/romath` | CC-BY-NC-4.0 |
 | Classification | `SciTechBanROClassification` | ClickbaitSciTechRO | not specified |
 | Classification | `SaRoCoClassification` | SaRoCo | not specified |
 | Classification | `HistNERoMentionClassification` | `avramandrei/histnero` | MIT |
