@@ -272,8 +272,26 @@ def _run_task(
     if encode_kwargs:
         kwargs["encode_kwargs"] = encode_kwargs
     task_type = getattr(getattr(task, "metadata", None), "type", "")
-    if prediction_folder is not None and task_type in {"Retrieval", "Reranking"}:
+    if prediction_folder is not None and task_type in {
+        "Retrieval",
+        "Reranking",
+        "Classification",
+        "PairClassification",
+    }:
+        # Newer MTEB accepts prediction_folder for classification/pair too, which
+        # feeds scripts/bootstrap_classification.py. Older versions reject it;
+        # retry once without the key so those runs still succeed.
         kwargs["prediction_folder"] = str(prediction_folder)
+        try:
+            evaluation.run(model, **kwargs)
+            return
+        except TypeError:
+            print(
+                f"[romteb] {task_type}: this mteb version has no "
+                "prediction_folder; running without saved predictions",
+                file=sys.stderr,
+            )
+            kwargs.pop("prediction_folder", None)
     evaluation.run(model, **kwargs)
 
 

@@ -98,7 +98,9 @@ TASK_REPORTING_DOMAIN: dict[str, str] = {
     # Culture / encyclopaedic QA
     "WWTBMRoQAReranking": "Culture",
     "WikipediaRetrievalMultilingual": "Encyclopaedic",
+    "WikipediaRerankingMultilingual": "Encyclopaedic",
     "XQuADRetrieval": "Encyclopaedic",
+    "BelebeleRetrieval": "Encyclopaedic",
     # Open-domain web IR
     "WebFAQRetrieval": "Web",
     "MQARoCQARetrieval": "Web",
@@ -168,7 +170,9 @@ TASK_DATASET: dict[str, str] = {
     "RoSTS": "RoSTS",
     "WebFAQRetrieval": "WebFAQ",
     "WikipediaRetrievalMultilingual": "Wikipedia",
+    "WikipediaRerankingMultilingual": "Wikipedia",  # same source: never double-count
     "XQuADRetrieval": "XQuAD",
+    "BelebeleRetrieval": "Belebele",
     "RoDTALLawsRetrieval": "RoD-TAL",
     "MQARoCQARetrieval": "MQA-CQA",
     "JuRoLegalExamReranking": "JuRo",

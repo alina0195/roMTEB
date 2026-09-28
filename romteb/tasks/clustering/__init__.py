@@ -1,14 +1,11 @@
 """Romanian clustering tasks.
 
-SIB200ClusteringS2S is reused from MTEB. Native RORetrieval clustering
-(outlet + content type) is registered once the prep script has been run
-with a local ``--input`` path.
+Empty for now. SIB200ClusteringS2S is reused from MTEB and does not need
+a class here. The native RORetrieval outlet / news-type clustering
+modules referenced by ``romteb.eval_config`` do not exist yet; their
+imports were dropped so this subpackage can be imported cleanly. Add
+``ro_news_outlet.py`` / ``ro_news_type.py`` (and re-export their
+classes) once the prep script is checked in.
 """
 
-from romteb.tasks.clustering.ro_news_outlet import RoNewsOutletClusteringP2P
-from romteb.tasks.clustering.ro_news_type import RoNewsTypeClusteringP2P
-
-__all__ = [
-    "RoNewsOutletClusteringP2P",
-    "RoNewsTypeClusteringP2P",
-]
+__all__: list[str] = []

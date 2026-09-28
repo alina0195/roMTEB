@@ -9,7 +9,11 @@ MTEB classification embeds one text per row. An NLI label is a property of the
 *pair*, so each sentence is embedded separately and the probe sees the
 InferSent / SentEval feature vector
 
-    [u, v, |u - v|, u * v]        (4 x embedding dim)
+    [u, v, |u - v|, u * v]        (4 x embedding dim, "4-part")
+
+The 3-part Sentence-BERT variant [u, v, |u - v|] is available for the
+appendix ablation: set the environment variable ``ROMTEB_RONLI_PROBE=3part``
+before the run (default ``4part``).
 
 The probe (``evaluator_model``), the train budget (``samples_per_label``) and
 ``n_experiments`` still come from romteb.eval_config, so the full-train
@@ -24,6 +28,7 @@ macro-F1.
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 import numpy as np
@@ -43,7 +48,22 @@ def _to_numpy(emb: Any) -> np.ndarray:
     return np.asarray(emb, dtype=np.float32)
 
 
-def pair_features(u: np.ndarray, v: np.ndarray) -> np.ndarray:
+_PROBE_MODE_ENV = "ROMTEB_RONLI_PROBE"
+
+
+def _probe_mode() -> str:
+    mode = os.environ.get(_PROBE_MODE_ENV, "4part").strip().lower()
+    if mode not in {"3part", "4part"}:
+        raise ValueError(
+            f"{_PROBE_MODE_ENV} must be '3part' or '4part', got {mode!r}"
+        )
+    return mode
+
+
+def pair_features(u: np.ndarray, v: np.ndarray, *, mode: str | None = None) -> np.ndarray:
+    """SentEval-style pair features. ``mode`` overrides the env-var switch."""
+    if (mode or _probe_mode()) == "3part":
+        return np.concatenate([u, v, np.abs(u - v)], axis=1)
     return np.concatenate([u, v, np.abs(u - v), u * v], axis=1)
 
 

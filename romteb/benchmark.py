@@ -91,9 +91,12 @@ REUSED_TASK_NAMES: list[str] = [
     "RomanianReviewsSentiment.v2",
     "RomanianSentimentClassification.v2",
     # Retrieval
+    "BelebeleRetrieval",
     "WebFAQRetrieval",
     "WikipediaRetrievalMultilingual",
     "XQuADRetrieval",
+    # Reranking
+    "WikipediaRerankingMultilingual",
     # BitextMining (cross-lingual section, excluded from Overall)
     "NTREXBitextMining",
     "Tatoeba",
