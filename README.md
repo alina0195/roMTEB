@@ -30,7 +30,7 @@ vectors (few shots per class, 10 draws).
 | Classification | `SIB200Classification` (ron_Latn) | MTEB | inherits |
 | Classification | `RomanianReviewsSentiment.v2` | MTEB | inherits |
 | Classification | `RomanianSentimentClassification.v2` | MTEB | inherits |
-| PairClassification | `RoNLIPairClassification` | `Eduard6421/RONLI` | CC-BY-4.0 |
+| PairClassification | `RoNLIPairClassification` | `Eduard6421/RONLI` | CC-BY-NC-SA-4.0 |
 | STS | `RoSTS` | `dumitrescustefan/ro_sts` | CC-BY-SA-4.0 |
 | Retrieval | `XQuADRetrieval` (ro) | MTEB / `google/xquad` | inherits |
 | Retrieval | `RoDTALLawsRetrieval` | `GRAI-UNSTPB/RoD-TAL` | CC-BY-NC-SA-4.0 |
