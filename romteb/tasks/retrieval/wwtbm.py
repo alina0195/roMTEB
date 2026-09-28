@@ -1,4 +1,4 @@
-"""WWTBM-Ro reranking (4 options per question)."""
+"""WWTBM-Ro MCQ as retrieval (per-question option pool)."""
 
 from __future__ import annotations
 
@@ -11,17 +11,21 @@ from romteb.data_prep._common import read_revision
 _HF_PATH = "alina0195/romteb-wwtbm-ro"
 
 
-class WWTBMRoQAReranking(AbsTaskRetrieval):
+class WWTBMRoQARetrieval(AbsTaskRetrieval):
     metadata = TaskMetadata(
-        name="WWTBMRoQAReranking",
+        name="WWTBMRoQARetrieval",
         description=(
-            "Romanian 'Who Wants to Be a Millionaire?' MCQ as reranking. "
-            "top_ranked is the four on-screen options; rank the gold answer "
-            "first. Primary metric: accuracy@1; map_at_1000 kept for compatibility."
+            "Romanian 'Who Wants to Be a Millionaire?' MCQ, evaluated as "
+            "retrieval with a per-question candidate pool (top_ranked = "
+            "the four on-screen options). Rank the gold answer first. "
+            "Primary metric: accuracy@1; map_at_1000 kept for MTEB "
+            "compatibility. Structurally identical to the reranking "
+            "protocol; grouped under Retrieval per the Sep 2026 taxonomy "
+            "consolidation."
         ),
         reference="https://arxiv.org/abs/2506.05991",
         dataset={"path": _HF_PATH, "revision": read_revision(_HF_PATH)},
-        type="Reranking",
+        type="Retrieval",
         category="t2t",
         modalities=["text"],
         eval_splits=["test"],

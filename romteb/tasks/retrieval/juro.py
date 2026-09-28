@@ -1,4 +1,4 @@
-"""JuRo legal-exam reranking (per-question option pool)."""
+"""JuRo legal-exam MCQ as retrieval (per-question option pool)."""
 
 from __future__ import annotations
 
@@ -11,18 +11,21 @@ from romteb.data_prep._common import read_revision
 _HF_PATH = "alina0195/romteb-juro-legal-reranking"
 
 
-class JuRoLegalExamReranking(AbsTaskRetrieval):
+class JuRoLegalExamRetrieval(AbsTaskRetrieval):
     metadata = TaskMetadata(
-        name="JuRoLegalExamReranking",
+        name="JuRoLegalExamRetrieval",
         description=(
-            "Romanian legal-exam MCQ as reranking. For each question the "
-            "candidate pool (top_ranked) is only that question's options; "
-            "the frozen embedder must rank the gold option above distractors. "
-            "Primary metric: accuracy@1 (Recall@1); map_at_1000 kept for MTEB compatibility."
+            "Romanian legal-exam MCQ, evaluated as retrieval with a "
+            "per-question candidate pool (top_ranked = that question's "
+            "options only). Rank the gold option above the distractors. "
+            "Primary metric: accuracy@1 (Recall@1); map_at_1000 kept for "
+            "MTEB compatibility. Structurally this is the reranking "
+            "protocol, published under the Retrieval type per the Sep "
+            "2026 taxonomy consolidation."
         ),
         reference="https://github.com/craciuncg/GRAF/tree/main/JuRo",
         dataset={"path": _HF_PATH, "revision": read_revision(_HF_PATH)},
-        type="Reranking",
+        type="Retrieval",
         category="t2t",
         modalities=["text"],
         eval_splits=["test"],

@@ -34,10 +34,10 @@ RETRIEVAL_TASKS = {
 }
 
 RERANKING_TASKS = {
-    "JuRoLegalExamReranking",
-    "WWTBMRoQAReranking",
-    "RoMedQAv2Reranking",
-    "GrileGrammarReranking",
+    "JuRoLegalExamRetrieval",
+    "WWTBMRoQARetrieval",
+    "RoMedQAv2Retrieval",
+    "GrileGrammarRetrieval",
 }
 
 

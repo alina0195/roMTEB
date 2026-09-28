@@ -272,8 +272,26 @@ def _run_task(
     if encode_kwargs:
         kwargs["encode_kwargs"] = encode_kwargs
     task_type = getattr(getattr(task, "metadata", None), "type", "")
-    if prediction_folder is not None and task_type in {"Retrieval", "Reranking"}:
+    if prediction_folder is not None and task_type in {
+        "Retrieval",
+        "Reranking",
+        "Classification",
+        "PairClassification",
+    }:
+        # Newer MTEB accepts prediction_folder for classification/pair too, which
+        # feeds scripts/bootstrap_classification.py. Older versions reject it;
+        # retry once without the key so those runs still succeed.
         kwargs["prediction_folder"] = str(prediction_folder)
+        try:
+            evaluation.run(model, **kwargs)
+            return
+        except TypeError:
+            print(
+                f"[romteb] {task_type}: this mteb version has no "
+                "prediction_folder; running without saved predictions",
+                file=sys.stderr,
+            )
+            kwargs.pop("prediction_folder", None)
     evaluation.run(model, **kwargs)
 
 
@@ -329,10 +347,14 @@ def _run_k8_sidecar(
             shutil.move(str(backup), str(original_path))
 
 
-def _require_cuda(model_name_or_path: str, allow_cpu: bool) -> None:
-    """Dense encoders must run on a GPU node. Login-node CPU looks hung."""
+def _require_gpu(model_name_or_path: str, allow_cpu: bool) -> None:
+    """Dense encoders need a GPU. CUDA on Linux, MPS on Apple Silicon.
+
+    Login-node CPU looks hung on real models, so a missing GPU is fatal
+    unless the caller passes ``--allow_cpu`` (debug / smoke only).
+    """
     if model_name_or_path in LEXICAL_BASELINE_NAMES:
-        print("[romteb] BM25 is lexical; CUDA not required")
+        print("[romteb] BM25 is lexical; GPU not required")
         return
     try:
         import torch
@@ -343,17 +365,28 @@ def _require_cuda(model_name_or_path: str, allow_cpu: bool) -> None:
         name = torch.cuda.get_device_name(0)
         print(f"[romteb] CUDA ok  devices={n}  gpu0={name}")
         return
+    if getattr(torch.backends, "mps", None) is not None and torch.backends.mps.is_available():
+        # Apple Silicon Metal Performance Shaders. sentence-transformers /
+        # mteb pick this up automatically when CUDA is absent, so no
+        # extra device argument is required here.
+        print("[romteb] MPS ok  (Apple Silicon GPU; CUDA absent)")
+        return
     if allow_cpu:
-        print("[romteb] WARNING: no CUDA; running on CPU (--allow_cpu)")
+        print("[romteb] WARNING: no GPU (CUDA or MPS); running on CPU (--allow_cpu)")
         return
     raise SystemExit(
-        "[romteb] no CUDA device. Do not run run_benchmark.py on the login "
-        "node (fep*). Submit a GPU job:\n"
+        "[romteb] no GPU device (CUDA / MPS). Do not run run_benchmark.py "
+        "on a login node (fep*). Submit a GPU job:\n"
         "  sbatch --job-name=romteb-gpu scripts/run_gpu_job.sh "
         "romteb/run_benchmark.py --model ...\n"
         "Or: sbatch scripts/sbatch_smoke_e5.sh\n"
-        "Pass --allow_cpu only to debug."
+        "On Apple Silicon, install a torch build with MPS support; on any\n"
+        "machine, pass --allow_cpu only to debug."
     )
+
+
+# Backwards-compatible alias for callers that still import _require_cuda.
+_require_cuda = _require_gpu
 
 
 def run_romteb(
@@ -368,7 +401,7 @@ def run_romteb(
     batch_size: int | None = None,
     trust_remote_code: bool = True,
 ) -> dict:
-    _require_cuda(model_name_or_path, allow_cpu)
+    _require_gpu(model_name_or_path, allow_cpu)
     model = _load_model(
         model_name_or_path,
         loader,

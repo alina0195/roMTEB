@@ -885,7 +885,7 @@ def aggregate(results_dir: str, models: list[str] | None = None):
         "Retrieval + Reranking. BitextMining and BM25 "
         "never contribute to Overall. Tasks flagged saturated (BM25 already "
         "solves them, e.g. XQuADRetrieval) or overall-excluded (every model "
-        "≤ empirical random baseline, e.g. JuRoLegalExamReranking) also never "
+        "≤ empirical random baseline, e.g. JuRoLegalExamRetrieval) also never "
         "contribute to Overall — see `docs/task_audit.md`. "
         "Confirmed contaminated cells are dropped from every mean. "
         "Classification ± is sample std over 10 LR probes; clustering "

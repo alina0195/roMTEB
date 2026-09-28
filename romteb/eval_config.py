@@ -1,9 +1,18 @@
 """RoMTEB evaluation knobs shared by task classes and the aggregator.
 
-Classification few-shot
-    MTEB default is 8 train examples per class × 10 random draws.
-    We raise the budget on harder tasks so the logistic probe sees more
-    of the label / aspect space. ``n_experiments`` stays 10 everywhere.
+Classification protocol
+    Default is the full-train class-weighted logistic-regression probe
+    (``classification_shots`` returns ``FULL_TRAIN`` / per-task cap and
+    ``n_experiments = 1``). Two overrides:
+
+      * ``ROMTEB_K_SHOT=<int>`` forces every classification task to
+        that shot count with ``N_EXPERIMENTS`` draws and the MTEB
+        default probe — a learning-curve knob.
+      * The ``--skip_k8`` flag suppresses the 8-shot sidecar that
+        otherwise runs alongside the full-train probe.
+
+    Older MTEB numbers were 8 shots per class × 10 draws; the sidecar
+    keeps them for direct comparison.
 
 Reporting domain / dataset
     One primary application domain per task (not the generic ``Written``
@@ -15,9 +24,26 @@ Reporting domain / dataset
 
 from __future__ import annotations
 
+import os
 from typing import Any, Iterable
 
 from sklearn.linear_model import LogisticRegression
+
+
+_K_SHOT_ENV = "ROMTEB_K_SHOT"
+
+
+def _k_shot_override() -> int | None:
+    raw = os.environ.get(_K_SHOT_ENV)
+    if raw is None or raw == "":
+        return None
+    try:
+        k = int(raw)
+    except ValueError as exc:
+        raise ValueError(f"{_K_SHOT_ENV} must be an int, got {raw!r}") from exc
+    if k <= 0:
+        raise ValueError(f"{_K_SHOT_ENV} must be positive, got {k}")
+    return k
 
 # Models skipped from Borda / plots. Nemotron retrieval is still the
 # mis-prompted v1 run (prompt-rerun stopped after bge-multilingual-gemma2).
@@ -49,7 +75,6 @@ CLASSIFICATION_SHOTS: dict[str, int] = {
     # Coarse document labels (binary / few-class).
     "HateSpeechROClassification": 8,
     "SaRoCoClassification": 8,
-    "RomanianReviewsSentiment.v2": 8,
     "RomanianSentimentClassification.v2": 8,
     "SIB200Classification": 8,
     # MASSIVE already has ~60 intents / ~18 scenarios; 8/class is a large pool.
@@ -58,7 +83,6 @@ CLASSIFICATION_SHOTS: dict[str, int] = {
     # Fine-grained multi-class.
     "RoOffenseClassification": 16,          # 5 offense classes
     "REDv2EmotionClassification": 16,       # 7 emotions (projected from multi-label)
-    "RoMathDomainClassification": 16,       # mathematical domains
     "SciTechBanROClassification": 16,       # sci/tech news labels
     "HistNERoMentionClassification": 16,    # 5 types, span-conditioned
     # Aspect-level: 3 polarities × 15 closed aspects, 1–3 aspects/review typical.
@@ -73,13 +97,12 @@ CLASSIFICATION_SHOTS: dict[str, int] = {
 # removed in Sep 2026 — see docs/task_audit.md.
 TASK_REPORTING_DOMAIN: dict[str, str] = {
     # Legal
-    "JuRoLegalExamReranking": "Legal",
+    "JuRoLegalExamRetrieval": "Legal",
     "RoDTALLawsRetrieval": "Legal",
     # Medical
-    "RoMedQAv2Reranking": "Medical",
+    "RoMedQAv2Retrieval": "Medical",
     # Academic split: grammar / math / science, plus SIB-200 as general topic.
-    "GrileGrammarReranking": "Grammar",
-    "RoMathDomainClassification": "Math",
+    "GrileGrammarRetrieval": "Grammar",
     "SciTechBanROClassification": "Science",
     "SIB200Classification": "Academic",
     "SIB200ClusteringS2S": "Academic",
@@ -87,7 +110,6 @@ TASK_REPORTING_DOMAIN: dict[str, str] = {
     "RoNewsTypeClusteringP2P": "News",
     # Reviews / sentiment
     "RoABSAClassification": "Reviews",
-    "RomanianReviewsSentiment.v2": "Reviews",
     "RomanianSentimentClassification.v2": "Reviews",
     # News / social
     "RoOffenseClassification": "News",
@@ -98,9 +120,11 @@ TASK_REPORTING_DOMAIN: dict[str, str] = {
     "MassiveIntentClassification": "Spoken",
     "MassiveScenarioClassification": "Spoken",
     # Culture / encyclopaedic QA
-    "WWTBMRoQAReranking": "Culture",
+    "WWTBMRoQARetrieval": "Culture",
     "WikipediaRetrievalMultilingual": "Encyclopaedic",
+    "WikipediaRerankingMultilingual": "Encyclopaedic",
     "XQuADRetrieval": "Encyclopaedic",
+    "BelebeleRetrieval": "Encyclopaedic",
     # Open-domain web IR
     "WebFAQRetrieval": "Web",
     "MQARoCQARetrieval": "Web",
@@ -144,7 +168,7 @@ SATURATED_TASKS: frozenset[str] = frozenset({"XQuADRetrieval"})
 # / type-macro / domain aggregation because every model scores at or below
 # the empirical random baseline (embedding cosine can't solve the underlying
 # task; see `scripts/mcq_multigold_baseline.py` for the baselines).
-OVERALL_EXCLUDE_TASKS: frozenset[str] = frozenset({"JuRoLegalExamReranking"})
+OVERALL_EXCLUDE_TASKS: frozenset[str] = frozenset({"JuRoLegalExamRetrieval"})
 
 # Source dataset for hierarchical aggregation. Two tasks from the same source
 # (MASSIVE intent+scenario) must not be counted twice inside one
@@ -152,7 +176,6 @@ OVERALL_EXCLUDE_TASKS: frozenset[str] = frozenset({"JuRoLegalExamReranking"})
 TASK_DATASET: dict[str, str] = {
     "HateSpeechROClassification": "HateSpeech-RO",
     "SaRoCoClassification": "SaRoCo",
-    "RomanianReviewsSentiment.v2": "RomanianReviews",
     "RomanianSentimentClassification.v2": "RomanianSentiment",
     "SIB200Classification": "SIB-200",
     "SIB200ClusteringS2S": "SIB-200",
@@ -162,7 +185,6 @@ TASK_DATASET: dict[str, str] = {
     "MassiveScenarioClassification": "MASSIVE",
     "RoOffenseClassification": "RoOffense",
     "REDv2EmotionClassification": "REDv2",
-    "RoMathDomainClassification": "RoMath",
     "SciTechBanROClassification": "SciTechBanRO",
     "HistNERoMentionClassification": "HistNERo",
     "RoABSAClassification": "RoABSA",
@@ -171,13 +193,15 @@ TASK_DATASET: dict[str, str] = {
     "RoSTS": "RoSTS",
     "WebFAQRetrieval": "WebFAQ",
     "WikipediaRetrievalMultilingual": "Wikipedia",
+    "WikipediaRerankingMultilingual": "Wikipedia",  # same source: never double-count
     "XQuADRetrieval": "XQuAD",
+    "BelebeleRetrieval": "Belebele",
     "RoDTALLawsRetrieval": "RoD-TAL",
     "MQARoCQARetrieval": "MQA-CQA",
-    "JuRoLegalExamReranking": "JuRo",
-    "WWTBMRoQAReranking": "WWTBM",
-    "RoMedQAv2Reranking": "RoMedQA",
-    "GrileGrammarReranking": "GRILE",
+    "JuRoLegalExamRetrieval": "JuRo",
+    "WWTBMRoQARetrieval": "WWTBM",
+    "RoMedQAv2Retrieval": "RoMedQA",
+    "GrileGrammarRetrieval": "GRILE",
     "NTREXBitextMining": "NTREX",
     "Tatoeba": "Tatoeba",
     "IWSLT2017BitextMining": "IWSLT2017",
@@ -201,10 +225,10 @@ CATEGORY_PRIMARY_METRIC: dict[str, str] = {
 # metric inside the category (accuracy@1 after JuRo is Overall-excluded);
 # category ranking uses Borda so MAP still votes.
 TASK_PRIMARY_METRIC: dict[str, str] = {
-    "JuRoLegalExamReranking": "accuracy",
-    "WWTBMRoQAReranking": "accuracy",
-    "GrileGrammarReranking": "accuracy",
-    "RoMedQAv2Reranking": "map_at_1000",
+    "JuRoLegalExamRetrieval": "accuracy",
+    "WWTBMRoQARetrieval": "accuracy",
+    "GrileGrammarRetrieval": "accuracy",
+    "RoMedQAv2Retrieval": "map_at_1000",
 }
 
 # Closed-set MCQ random baselines. Values below are empirical mean over
@@ -218,10 +242,10 @@ TASK_PRIMARY_METRIC: dict[str, str] = {
 # higher than the naive 1/k, and most published legacy scores sit on top
 # of these baselines.
 RERANKING_RANDOM_BASELINE: dict[str, dict[str, float]] = {
-    "JuRoLegalExamReranking": {"k": 3, "accuracy": 0.381, "map_at_1000": 0.639},
-    "WWTBMRoQAReranking": {"k": 4, "accuracy": 0.249, "map_at_1000": 0.520},
-    "GrileGrammarReranking": {"k": 4, "accuracy": 0.260, "map_at_1000": 0.531},
-    "RoMedQAv2Reranking": {"k": 5, "accuracy": 0.342, "map_at_1000": 0.553},
+    "JuRoLegalExamRetrieval": {"k": 3, "accuracy": 0.381, "map_at_1000": 0.639},
+    "WWTBMRoQARetrieval": {"k": 4, "accuracy": 0.249, "map_at_1000": 0.520},
+    "GrileGrammarRetrieval": {"k": 4, "accuracy": 0.260, "map_at_1000": 0.531},
+    "RoMedQAv2Retrieval": {"k": 5, "accuracy": 0.342, "map_at_1000": 0.553},
 }
 
 # Classification tasks that also print macro-F1 next to accuracy.
@@ -229,11 +253,17 @@ REPORT_MACRO_F1: frozenset[str] = frozenset({"RoABSAClassification", "RoNLIClass
 
 
 def classification_shots(task_name: str) -> int:
-    """Train budget per label under the official (full-train) protocol.
+    """Train budget per label.
 
-    CLASSIFICATION_SHOTS above is kept only as a record of the old k-shot
-    budgets (e.g. for a learning-curve appendix); it is not used here.
+    Default: full-train (``FULL_TRAIN``) with a per-task cap when the
+    train split is expensive. ``ROMTEB_K_SHOT=<int>`` overrides both
+    with a fixed shot count for a learning-curve sweep — the caller is
+    then also responsible for restoring ``n_experiments`` and the
+    default MTEB probe (``apply_eval_config`` does this).
     """
+    override = _k_shot_override()
+    if override is not None:
+        return override
     return FULL_TRAIN_CAPS.get(task_name, FULL_TRAIN)
 
 
@@ -252,13 +282,24 @@ def metric_of(task_type: str, task_name: str | None = None) -> str:
 
 
 def apply_eval_config(tasks: Iterable[Any]) -> list[Any]:
-    """Apply the full-train probe protocol to every classification task."""
+    """Apply the classification probe protocol to every task.
+
+    Full-train default: class-weighted logistic regression, one draw
+    (every draw would see the same rows). With ``ROMTEB_K_SHOT`` set,
+    fall back to MTEB's default probe with ``N_EXPERIMENTS`` draws so
+    the sample std stays meaningful for a learning-curve report.
+    """
+    override = _k_shot_override()
     out = []
     for task in tasks:
         name = getattr(getattr(task, "metadata", None), "name", None)
         if name and hasattr(task, "samples_per_label"):
             task.samples_per_label = classification_shots(name)
-            task.n_experiments = 1             # full data: every draw would be identical
-            task.evaluator_model = make_probe()
+            if override is None:
+                task.n_experiments = 1
+                task.evaluator_model = make_probe()
+            else:
+                task.n_experiments = N_EXPERIMENTS
+                task.evaluator_model = LogisticRegression(max_iter=100)
         out.append(task)
     return out

@@ -1,13 +1,11 @@
-"""Romanian reranking tasks (MCQ candidate pools via top_ranked)."""
+"""Reranking package — currently empty.
 
-from romteb.tasks.reranking.grile import GrileGrammarReranking
-from romteb.tasks.reranking.juro import JuRoLegalExamReranking
-from romteb.tasks.reranking.romedqa import RoMedQAv2Reranking
-from romteb.tasks.reranking.wwtbm import WWTBMRoQAReranking
+In Sep 2026 the four Romanian MCQ tasks (JuRo, WWTBM, RoMedQA_v2, GRILE)
+were moved from Reranking to Retrieval (per-question option pool). See
+`romteb.tasks.retrieval` and the README task table.
 
-__all__ = [
-    "JuRoLegalExamReranking",
-    "WWTBMRoQAReranking",
-    "RoMedQAv2Reranking",
-    "GrileGrammarReranking",
-]
+Nothing is exported from here so the leaderboard's Reranking column stays
+empty until a genuine reranking dataset is added.
+"""
+
+__all__: list[str] = []

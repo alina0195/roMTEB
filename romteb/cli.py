@@ -79,7 +79,10 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--allow_cpu",
         action="store_true",
-        help="Allow dense models on CPU (debug only).",
+        help=(
+            "Allow dense models on plain CPU (debug only). Not needed on "
+            "Apple Silicon: MPS is detected automatically."
+        ),
     )
     parser.add_argument(
         "--trust_remote_code",
