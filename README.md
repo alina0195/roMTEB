@@ -96,9 +96,10 @@ with `ROMTEB_REV__<owner>__<name>=<sha>` if you need to.
 
 ## Run
 
-Needs CUDA. On CPU a dense encode looks hung; `--allow_cpu` exists for
-debugging, not for a real eval. BM25 (`--model romteb/bm25s-ro`) is
-lexical and does not need a GPU.
+Needs a GPU: CUDA on Linux/Windows or MPS on Apple Silicon (detected
+automatically). On plain CPU a dense encode looks hung; `--allow_cpu`
+exists for debugging and small smoke runs, not for a full eval. BM25
+(`--model romteb/bm25s-ro`) is lexical and does not need a GPU.
 
 Smoke (RoSTS only):
 
@@ -191,7 +192,7 @@ Full policy and the "why frozen for classification" argument are in
 | `--no_trust_remote_code` | off | Refuse custom modeling code (recommended for untrusted uploads) |
 | `--batch_size` | 32 | 1–4 if a large model OOMs |
 | `--skip_k8` | off | Skip the 8-shot classification sidecar |
-| `--allow_cpu` | off | Allow dense models on CPU (debug only) |
+| `--allow_cpu` | off | Allow dense models on plain CPU (debug only; MPS on Apple Silicon is picked up automatically) |
 | `--overwrite_results` | off | Re-run tasks that already have a JSON |
 | `--summary` | `<output>/summary.json` | Single-model payload for a caller |
 | `--summary-only` | off | Rebuild that JSON from results already on disk |
