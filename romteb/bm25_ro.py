@@ -236,19 +236,46 @@ def load_bm25_ro(**kwargs) -> SearchProtocol:
         stemmer_language=stemmer_language,
         **kwargs,
     )
-    orig_encode = inner._encode
 
-    def _encode(texts: list[str]):
-        folded = [fold_romanian(t) for t in texts]
-        return orig_encode(folded)
+    # The pre-2.13 mteb API exposed an ``_encode`` hook that ran on both
+    # corpus and query text; folding was a one-line wrap. Newer mteb builds
+    # the tokenizer lazily inside ``index()`` and reuses it in ``search()``,
+    # so we install folding at both entry points instead:
+    #   * corpus: wrap ``index()`` to materialise a folded list of docs
+    #             (BM25Search only reads ``id``/``title``/``text``).
+    #   * queries: after the tokenizer is built, wrap its ``transform`` so
+    #             query text is folded before it hits the BM25 index.
+    original_index = inner.index
 
-    inner._encode = _encode  # type: ignore[method-assign]
+    def _folded_index(corpus, **kw):
+        folded_corpus = [
+            {
+                "id": doc["id"],
+                "title": fold_romanian(doc.get("title", "")),
+                "text": fold_romanian(doc.get("text", "")),
+            }
+            for doc in corpus
+        ]
+        result = original_index(folded_corpus, **kw)
+        tok = getattr(inner, "_tokenizer", None)
+        if tok is not None and not getattr(tok, "_ro_folding_installed", False):
+            original_transform = tok.transform
+
+            def _folded_transform(texts):
+                return original_transform([fold_romanian(t) for t in texts])
+
+            tok.transform = _folded_transform  # type: ignore[method-assign]
+            tok._ro_folding_installed = True  # type: ignore[attr-defined]
+        return result
+
+    inner.index = _folded_index  # type: ignore[method-assign]
+
     # MTEB 2.12 RetrievalEvaluator dispatches via runtime-checked SearchProtocol
     # which requires a `mteb_model_meta` property. bm25_loader from upstream
     # returns a BM25Search instance without one, so we attach it here.
     inner.mteb_model_meta = bm25_model_meta()  # type: ignore[attr-defined]
     logger.info(
-        "BM25-RO: stemmer=%s stopwords=%s (diacritics folded)",
+        "BM25-RO: stemmer=%s stopwords=%s (diacritics folded on corpus + queries)",
         stemmer_language,
         "list" if isinstance(stopwords, list) else type(stopwords).__name__,
     )
