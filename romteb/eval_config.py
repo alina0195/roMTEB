@@ -58,7 +58,6 @@ CLASSIFICATION_SHOTS: dict[str, int] = {
     # Fine-grained multi-class.
     "RoOffenseClassification": 16,          # 5 offense classes
     "REDv2EmotionClassification": 16,       # 7 emotions (projected from multi-label)
-    "RoMathDomainClassification": 16,       # mathematical domains
     "SciTechBanROClassification": 16,       # sci/tech news labels
     "HistNERoMentionClassification": 16,    # 5 types, span-conditioned
     # Aspect-level: 3 polarities × 15 closed aspects, 1–3 aspects/review typical.
@@ -79,7 +78,6 @@ TASK_REPORTING_DOMAIN: dict[str, str] = {
     "RoMedQAv2Reranking": "Medical",
     # Academic split: grammar / math / science, plus SIB-200 as general topic.
     "GrileGrammarReranking": "Grammar",
-    "RoMathDomainClassification": "Math",
     "SciTechBanROClassification": "Science",
     "SIB200Classification": "Academic",
     "SIB200ClusteringS2S": "Academic",
@@ -162,7 +160,6 @@ TASK_DATASET: dict[str, str] = {
     "MassiveScenarioClassification": "MASSIVE",
     "RoOffenseClassification": "RoOffense",
     "REDv2EmotionClassification": "REDv2",
-    "RoMathDomainClassification": "RoMath",
     "SciTechBanROClassification": "SciTechBanRO",
     "HistNERoMentionClassification": "HistNERo",
     "RoABSAClassification": "RoABSA",
