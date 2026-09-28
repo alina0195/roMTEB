@@ -23,7 +23,7 @@ columns by hand after this script runs; rerun to refresh the list.
 | `MassiveIntentClassification` | Classification | ro | `mteb/amazon_massive_intent` | accuracy | reuse | default; review and override if needed |
 | `MassiveScenarioClassification` | Classification | ro | `mteb/amazon_massive_scenario` | accuracy | reuse | default; review and override if needed |
 | `Moroco.v2` | Classification | default | `mteb/moroco` | accuracy | exclude | obsolete; dropped from RoMTEB |
-| `RomanianReviewsSentiment.v2` | Classification | default | `mteb/romanian_reviews_sentiment` | accuracy | reuse | default; review and override if needed |
+| `RomanianReviewsSentiment.v2` | Classification | default | `mteb/romanian_reviews_sentiment` | accuracy | exclude | LaRoSeDa: heuristic star→sentiment labels, does not discriminate (audit Sep 2026, `docs/task_audit.md`) |
 | `RomanianSentimentClassification.v2` | Classification | default | `mteb/romanian_sentiment` | accuracy | reuse | default; review and override if needed |
 | `SIB200Classification` | Classification | ron_Latn | `mteb/sib200` | accuracy | reuse | default; review and override if needed |
 | `SIB200ClusteringS2S` | Clustering | ron_Latn | `mteb/sib200` | v_measure | reuse | default; review and override if needed |

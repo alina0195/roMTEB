@@ -1,4 +1,4 @@
-"""RoMedQA_v2 reranking (per-question option pool)."""
+"""RoMedQA_v2 MCQ as retrieval (per-question option pool)."""
 
 from __future__ import annotations
 
@@ -11,17 +11,20 @@ from romteb.data_prep._common import read_revision
 _HF_PATH = "alina0195/romteb-romedqa-v2-reranking"
 
 
-class RoMedQAv2Reranking(AbsTaskRetrieval):
+class RoMedQAv2Retrieval(AbsTaskRetrieval):
     metadata = TaskMetadata(
-        name="RoMedQAv2Reranking",
+        name="RoMedQAv2Retrieval",
         description=(
-            "Romanian medical MCQ (RoMedQA_v2) as reranking. top_ranked is "
-            "the numbered options of that question; rank gold option(s) "
-            "first. Multi-relevant (1–5 gold options); primary metric map_at_1000."
+            "Romanian medical MCQ (RoMedQA_v2), evaluated as retrieval "
+            "with a per-question candidate pool (top_ranked = that "
+            "question's numbered options). 1–5 gold options per question, "
+            "so the primary metric is map_at_1000. Structurally the same "
+            "as the reranking protocol; grouped under Retrieval per the "
+            "Sep 2026 taxonomy consolidation."
         ),
         reference="https://huggingface.co/datasets/craciuncg/RoMedQA_v2",
         dataset={"path": _HF_PATH, "revision": read_revision(_HF_PATH)},
-        type="Reranking",
+        type="Retrieval",
         category="t2t",
         modalities=["text"],
         eval_splits=["test"],

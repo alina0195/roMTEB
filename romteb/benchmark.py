@@ -25,15 +25,13 @@ from romteb.tasks.classification import (
 )
 from romteb.tasks.classification.ronli_cls import RoNLIClassification
 from romteb.tasks.pair_classification import RoNLIPairClassification
-from romteb.tasks.reranking import (
-    GrileGrammarReranking,
-    JuRoLegalExamReranking,
-    RoMedQAv2Reranking,
-    WWTBMRoQAReranking,
-)
 from romteb.tasks.retrieval import (
+    GrileGrammarRetrieval,
+    JuRoLegalExamRetrieval,
     MQARoCQARetrieval,
     RoDTALLawsRetrieval,
+    RoMedQAv2Retrieval,
+    WWTBMRoQARetrieval,
 )
 from romteb.eval_config import apply_eval_config
 from romteb.tasks.sts import RoSTS
@@ -65,17 +63,18 @@ _CUSTOM_CLASSES = [
     # Retrieval: open corpus (not MCQ). MS MARCO is held out for training.
     RoDTALLawsRetrieval,
     MQARoCQARetrieval,
-    # Reranking: MCQ option pool (JuRo / WWTBM / RoMedQA / GRILE).
-    JuRoLegalExamReranking,
-    WWTBMRoQAReranking,
-    RoMedQAv2Reranking,
-    GrileGrammarReranking,
-    # NOTE: the four full-option-bank MCQ retrieval variants (Grile / JuRo /
-    # WWTBM / RoMedQA *Retrieval*) were removed in Sep 2026 after the audit
-    # (docs/task_audit.md). Three of them collapsed to p90 nDCG@10 < 0.10
-    # because the option-bank corpus has duplicate surface forms, and the
-    # WWTBM variant was driven by a single outlier. Use the *Reranking
-    # counterparts instead — the official MCQ protocol.
+    # Retrieval (MCQ, per-question option pool): JuRo / WWTBM / RoMedQA / GRILE.
+    # These are structurally reranking (top_ranked restricts the candidate
+    # pool to that question's options); grouped under Retrieval per the
+    # Sep 2026 taxonomy consolidation.
+    JuRoLegalExamRetrieval,
+    WWTBMRoQARetrieval,
+    RoMedQAv2Retrieval,
+    GrileGrammarRetrieval,
+    # NOTE: the full-option-bank MCQ retrieval variants were removed in
+    # Sep 2026 after the audit (docs/task_audit.md). Three collapsed to
+    # p90 nDCG@10 < 0.10 because the option-bank corpus had duplicate
+    # surface forms, and the WWTBM variant was driven by a single outlier.
     # Clustering is out of this stage (RORetrieval unpinned; SIB200 skipped).
 ]
 
@@ -87,8 +86,10 @@ REUSED_TASK_NAMES: list[str] = [
     "MassiveIntentClassification",
     "MassiveScenarioClassification",
     "SIB200Classification",
-    # Moroco.v2 dropped (obsolete)
-    "RomanianReviewsSentiment.v2",
+    # Moroco.v2 dropped (obsolete).
+    # LaRoSeDa (RomanianReviewsSentiment.v2) dropped: heuristic star→sentiment
+    # labels, saturated for any modern encoder, does not discriminate.
+    # See docs/task_audit.md for the criteria.
     "RomanianSentimentClassification.v2",
     # Retrieval
     "BelebeleRetrieval",
@@ -104,7 +105,6 @@ REUSED_TASK_NAMES: list[str] = [
 ]
 
 _DEFAULT_SUBSET_TASKS = {
-    "RomanianReviewsSentiment.v2",
     "RomanianSentimentClassification.v2",
 }
 

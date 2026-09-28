@@ -72,7 +72,7 @@ SKIP_TASKS = {
 # `SATURATED_TASKS` and `OVERALL_EXCLUDE_TASKS` in `romteb/eval_config.py`.
 AUDIT_EXCLUDED_TASKS = {
     "XQuADRetrieval",
-    "JuRoLegalExamReranking",
+    "JuRoLegalExamRetrieval",
 }
 
 DOMAIN_ORDER = [

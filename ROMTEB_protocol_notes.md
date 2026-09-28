@@ -55,7 +55,7 @@ _Status: recommendations, 26 Sep 2026. Based on roMTEB@3ad6c93 (7 Sep 2026), mte
 ## 3. Retrieval
 
 - BM25 gap (existing results): XQuAD saturated (excluded), Wikipedia near-saturated (BM25 0.847 vs best 0.915); MQA-CQA, RoD-TAL and WebFAQ still separate models.
-- Quick wins already in mteb with a `ron` subset but not registered: **BelebeleRetrieval** (ron_Latn-ron_Latn), **WikipediaRerankingMultilingual** (ro), MultiEURLEX multilabel (ro). RoITD is marked [done] in the inventory xlsx but is not in `benchmark.py`.
+- Quick wins already in mteb with a `ron` subset: **BelebeleRetrieval** (ron_Latn-ron_Latn) and **WikipediaRerankingMultilingual** (ro) — **registered** (Sep 2026). Still open: MultiEURLEX multilabel (ro); RoITD (marked [done] in the inventory xlsx but not in `benchmark.py`).
 - RoITD / any SQuAD-style set will saturate like XQuAD unless the corpus is enlarged with distractors (all ro Wikipedia IT paragraphs) or it is used as reranking with hard negatives.
 - New tasks from existing sources:
   - RO Text Summarization: summary → article (72k corpus, gold by construction).
@@ -72,6 +72,14 @@ _Status: recommendations, 26 Sep 2026. Based on roMTEB@3ad6c93 (7 Sep 2026), mte
 - Dedup MQA-FAQ against WebFAQ (both from Common Crawl FAQPage markup) to avoid double counting.
 
 ## 4. Reranking
+
+> **Update (Sep 2026):** the four MCQ classes (JuRo, WWTBM, RoMedQA,
+> GRILE) were renamed `*Retrieval` and moved to
+> `romteb/tasks/retrieval/` per the taxonomy consolidation
+> (per-question `top_ranked` pool is retained; only the type label
+> changed). The Reranking column in the leaderboard now holds
+> `WikipediaRerankingMultilingual` (reused MTEB) only. The build
+> options below still apply and are how the column grows.
 
 - **Difference from retrieval.**
   - Retrieval ranks the whole corpus (first-stage recall).
@@ -111,7 +119,8 @@ _Status: recommendations, 26 Sep 2026. Based on roMTEB@3ad6c93 (7 Sep 2026), mte
 
 - RoNewsOutlet/RoNewsType P2P are imported in `tasks/clustering/__init__.py`, but their modules are missing from the repo.
 - Candidates:
-  - RoMath domain (7 labels, S2S).
+  - ~~RoMath domain (7 labels, S2S).~~ RoMath was removed from the
+    RoMTEB scope entirely (Sep 2026); do not add it back.
   - MOROCO topics (6 labels, P2P). Note the `$NE$` masking.
   - Romanian Categorized Web Dataset.
   - RO Text Summarization / News categories.
